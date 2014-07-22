@@ -257,6 +257,7 @@
         self.shadowRadius = 10.0;
 		self.shadowOpacity = 1.0;
         self.shadowOffset = CGSizeZero;
+        self.shadowPathRadius = 0;
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(applicationDidChangeStatusBarOrientation:) name:UIApplicationDidChangeStatusBarOrientationNotification object:nil];
     }
     return self;
@@ -282,7 +283,7 @@
 - (void)stylerWasAddedToDynamicsDrawerViewController:(MSDynamicsDrawerViewController *)dynamicsDrawerViewController forDirection:(MSDynamicsDrawerDirection)direction
 {
 	self.shadowLayer = [CALayer layer];
-	self.shadowLayer.shadowPath = [[UIBezierPath bezierPathWithRect:dynamicsDrawerViewController.paneView.frame] CGPath];
+	self.shadowLayer.shadowPath = [[UIBezierPath bezierPathWithRoundedRect:dynamicsDrawerViewController.paneView.frame cornerRadius:self.shadowPathRadius] CGPath];
     self.shadowLayer.shadowColor = self.shadowColor.CGColor;
     self.shadowLayer.shadowOpacity = self.shadowOpacity;
     self.shadowLayer.shadowRadius = self.shadowRadius;
@@ -299,7 +300,7 @@
             } else if (direction & MSDynamicsDrawerDirectionVertical) {
                 shadowRect = CGRectInset(shadowRect, -self.shadowRadius, 0.0);
             }
-            self.shadowLayer.shadowPath = [[UIBezierPath bezierPathWithRect:shadowRect] CGPath];
+            self.shadowLayer.shadowPath = [[UIBezierPath bezierPathWithRoundedRect:shadowRect cornerRadius:self.shadowPathRadius] CGPath];
             [dynamicsDrawerViewController.paneView.layer insertSublayer:self.shadowLayer atIndex:0];
         }
     } else {

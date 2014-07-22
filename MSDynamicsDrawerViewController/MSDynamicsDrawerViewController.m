@@ -31,12 +31,11 @@
 
 //#define DEBUG_LAYOUT
 
-CGFloat const MSDynamicsDrawerDefaultOpenStateRevealWidthHorizontal = 267.0;
-CGFloat const MSDynamicsDrawerDefaultOpenStateRevealWidthVertical = 300.0;
-static CGFloat const MSPaneViewVelocityThreshold = 5.0;
-static CGFloat const MSPaneViewVelocityMultiplier = 5.0;
-static CGFloat const MSPaneViewScreenEdgeThreshold = 24.0; // After testing Apple's `UIScreenEdgePanGestureRecognizer` this seems to be the closest value to create an equivalent effect.
-static CGFloat const MSPaneStatePositionValidityEpsilon = 2.0;
+const CGFloat MSDynamicsDrawerDefaultOpenStateRevealWidthHorizontal = 267.0;
+const CGFloat MSDynamicsDrawerDefaultOpenStateRevealWidthVertical = 300.0;
+const CGFloat MSPaneViewVelocityThreshold = 5.0;
+const CGFloat MSPaneViewVelocityMultiplier = 5.0;
+const CGFloat MSPaneViewScreenEdgeThreshold = 24.0; // After testing Apple's `UIScreenEdgePanGestureRecognizer` this seems to be the closest value to create an equivalent effect.
 
 NSString * const MSDynamicsDrawerBoundaryIdentifier = @"MSDynamicsDrawerBoundaryIdentifier";
 
@@ -769,27 +768,9 @@ void MSDynamicsDrawerDirectionActionForMaskedValues(NSInteger direction, MSDynam
 - (void)setPaneState:(MSDynamicsDrawerPaneState)paneState inDirection:(MSDynamicsDrawerDirection)direction animated:(BOOL)animated allowUserInterruption:(BOOL)allowUserInterruption completion:(void (^)(void))completion
 {
     NSAssert(((self.possibleDrawerDirection & direction) == direction), @"Unable to bounce open with impossible or multiple directions");
-    
-    // If the pane is already positioned in the desired pane state and direction, don't continue
-    MSDynamicsDrawerPaneState currentPaneState;
-    if ([self paneViewIsPositionedInValidState:&currentPaneState] && (currentPaneState == paneState)) {
-        // If already closed, *in any direction*, don't continue
-        if (currentPaneState == MSDynamicsDrawerPaneStateClosed) {
-            if (completion) completion();
-            return;
-        }
-        // If opened, *in the correct direction*, don't continue
-        else if (direction == self.currentDrawerDirection) {
-            if (completion) completion();
-            return;
-        }
-    }
-    
-    // If opening in a specified direction, set the drawer to that direction
     if ((paneState != MSDynamicsDrawerPaneStateClosed)) {
         self.currentDrawerDirection = direction;
     }
-    
     if (animated) {
         [self addDynamicsBehaviorsToCreatePaneState:paneState];
         if (!allowUserInterruption) [self setViewUserInteractionEnabled:NO];
@@ -885,7 +866,7 @@ void MSDynamicsDrawerDirectionActionForMaskedValues(NSInteger direction, MSDynam
     for (MSDynamicsDrawerPaneState currentPaneState = MSDynamicsDrawerPaneStateClosed; currentPaneState <= MSDynamicsDrawerPaneStateOpenWide; currentPaneState++) {
         CGPoint paneStatePaneViewOrigin = [self paneViewOriginForPaneState:currentPaneState];
         CGPoint currentPaneViewOrigin = (CGPoint){roundf(self.paneView.frame.origin.x), roundf(self.paneView.frame.origin.y)};
-        CGFloat epsilon = MSPaneStatePositionValidityEpsilon;
+        CGFloat epsilon = 2.0;
         if ((fabs(paneStatePaneViewOrigin.x - currentPaneViewOrigin.x) < epsilon) && (fabs(paneStatePaneViewOrigin.y - currentPaneViewOrigin.y) < epsilon)) {
             validState = YES;
             *paneState = currentPaneState;
@@ -911,7 +892,7 @@ void MSDynamicsDrawerDirectionActionForMaskedValues(NSInteger direction, MSDynam
     return minPaneState;
 }
 
-#pragma mark Current Drawer Direction
+#pragma mark Current Reveal Direction
 
 - (void)setCurrentDrawerDirection:(MSDynamicsDrawerDirection)currentDrawerDirection
 {
@@ -1296,21 +1277,21 @@ void MSDynamicsDrawerDirectionActionForMaskedValues(NSInteger direction, MSDynam
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer
 {
     if (gestureRecognizer == self.panePanGestureRecognizer) {
+        if ([self.delegate respondsToSelector:@selector(dynamicsDrawerViewController:shouldBeginPanePan:)]) {
+            if (![self.delegate dynamicsDrawerViewController:self shouldBeginPanePan:self.panePanGestureRecognizer]) {
+                return NO;
+            }
+        }
         if (self.paneDragRequiresScreenEdgePan) {
             MSDynamicsDrawerPaneState paneState;
             if ([self paneViewIsPositionedInValidState:&paneState] && (paneState == MSDynamicsDrawerPaneStateClosed)) {
-                UIRectEdge panStartEdges = [self panGestureRecognizer:self.panePanGestureRecognizer didStartAtEdgesOfView:self.paneView];
-                // Mask to only edges that are possible (there's a drawer view controller set in that direction)
-                MSDynamicsDrawerDirection possibleDirectionsForPanStartEdges = (panStartEdges & self.possibleDrawerDirection);
-                BOOL gestureStartedAtPossibleEdge = (possibleDirectionsForPanStartEdges != UIRectEdgeNone);
-                // If the gesture didn't start at a possible edge, return no
-                if (!gestureStartedAtPossibleEdge) {
-                    return NO;
+                UIRectEdge edges = [self panGestureRecognizer:self.panePanGestureRecognizer didStartAtEdgesOfView:self.paneView];
+                // Mask out edges that aren't possible
+                BOOL validEdges = (edges & self.possibleDrawerDirection);
+                // If there is a valid edge and pane drag is revealed for that edge's direction
+                if (validEdges && [self paneDragRevealEnabledForDirection:validEdges]) {
+                    return YES;
                 }
-            }
-        }
-        if ([self.delegate respondsToSelector:@selector(dynamicsDrawerViewController:shouldBeginPanePan:)]) {
-            if (![self.delegate dynamicsDrawerViewController:self shouldBeginPanePan:self.panePanGestureRecognizer]) {
                 return NO;
             }
         }

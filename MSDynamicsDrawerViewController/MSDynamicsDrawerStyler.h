@@ -140,7 +140,7 @@
 /**
  The color of the shadow.
  
- Default value of `blackColor`.
+ Default value of `[UIColor blackColor]`.
  */
 @property (nonatomic, strong) UIColor *shadowColor;
 
@@ -164,5 +164,14 @@
  The default value of this property is `(0.0, 0.0)`.
  */
 @property (nonatomic, assign) CGSize shadowOffset;
+
+
+/**
+ The radius of the layer’s shadow.
+ 
+ The default value of this property is `0.0`.
+ */
+@property (nonatomic, assign) CGFloat shadowPathRadius;
+
 
 @end
